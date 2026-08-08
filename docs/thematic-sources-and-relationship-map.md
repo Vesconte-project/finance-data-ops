@@ -201,6 +201,58 @@ already knows about itself.
 The serving side carries the other half: `ATLAS_COMMUNITY_MIN_MEMBERS` (5) keeps a handful of tickers from being
 offered as a category. It was 3, and raising it drops six communities of which five are the unnamed fallback.
 
+## 4d. Corroboration: one source is not a contradiction
+
+Corporate actions are gated by provider agreement before they reach the served
+table. The check exists for a real failure: AAPL's pre-2020 dividends arrive as
+`0.82` from one provider and `0.205` from the other, either side of a 4:1 split,
+and serving either would be wrong.
+
+But the same rule treated **one** source as if it were two sources
+contradicting each other, and those are different facts. Measured on 2026-08-08
+over a 30-symbol sample drawn deliberately across regions:
+
+| provider | dividend history returned |
+|---|---|
+| yahoo_finance | 25 of 30 |
+| fmp | **1** of 30 |
+
+So requiring two served 3% of what was ingested — all US mega-caps — and no
+amount of further ingestion could have fixed it. GSK.L and ULVR.L carry 34 and
+35 years of payments and were being discarded whole.
+
+The requirement is now a **count per action type** rather than a rule about two
+particular providers:
+
+```python
+MIN_CORROBORATING_SOURCES = {"dividend": 1, "split": 2}
+```
+
+Every event records `corroboratingSources`. That is what makes a third provider
+free: the count rises on its own, a consumer that wants more filters on the
+number, and raising the bar later is a config change. Nothing has to be migrated.
+
+Splits still require two. A wrong ratio silently corrupts every adjusted price
+derived from it, so the cost of being wrong is not symmetric with the cost of
+being absent.
+
+Two sources that disagree are still blocked — 230 amount mismatches and 39
+likely split-adjusted conflicts stayed out.
+
+Result: the served dividend history went from **2 symbols to 344**, of which 189
+carry more than twenty years of payments. That is what lets the scorecard's
+income reading ask whether a dividend has ever been cut.
+
+### The ingestion behind it is still manual
+
+`scripts/run_corporate_actions_shadow.py --symbols ...` is required, has no
+default universe, and the `dataops-event-observations-daily` flow is not
+scheduled. The 2026-08-08 run was by hand. It also met a real limit: **FMP began
+refusing every call from the third batch of 40 and did not recover**, so most of
+the universe carries one source because we never got to ask the second. Re-running
+when the quota resets raises those counts with no code change — which is the same
+property that makes a third provider painless.
+
 ## 5. What's LEFT
 ### Immediate
 - **Backoffice source-health monitoring** — surface + alert on: stale sources (holdings `as_of` age), themes with 0
